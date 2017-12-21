@@ -40,6 +40,12 @@ namespace WebSocketDemo
                 app.UseDeveloperExceptionPage();
             }
             app.UseWebSockets();
+            //var webSocketOptions = new WebSocketOptions()
+            //{
+            //    KeepAliveInterval = TimeSpan.FromSeconds(120),
+            //    ReceiveBufferSize = 4 * 1024
+            //};
+            //app.UseWebSockets(webSocketOptions);
             app.UseMvc();
 
             //若访问wwwroot内的文件需添加如下配置，webapi项目默认不开启

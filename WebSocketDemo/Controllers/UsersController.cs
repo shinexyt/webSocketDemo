@@ -68,6 +68,7 @@ namespace WebSocketDemo.Controllers
             {
                 var sendBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_context.users.Where(u => u.UserId != id))));
                 await webSocket.SendAsync(sendBuffer, result.MessageType, result.EndOfMessage, CancellationToken.None);
+                //await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
 
                 result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             }

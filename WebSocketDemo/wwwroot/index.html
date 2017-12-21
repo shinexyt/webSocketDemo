@@ -31,7 +31,7 @@
         <section>
             <h2 class="text-left">用户列表</h2>
             <div class="list-group">
-                <button class="list-group-item" v-for="item in list" :key="item.userId" @click="lunchConversation(item.userId)">{{item.userName}}</button>
+                <button class="list-group-item" v-for="item in list" :key="item.userId">{{item.UserName}}</button>
             </div>
         </section>
         <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -109,17 +109,17 @@
                     var scheme = document.location.protocol == "https:" ? "wss" : "ws";
                     var port = document.location.port ? (":" + document.location.port) : "";
                     var connectionUrl = scheme + "://" + document.location.hostname + port + "/api/users/others1/" + this.currentUser.userId;
-                    socket = new WebSocket(connectionUrl);
-                    socket.onopen = (event) => {
+                    this.socket = new WebSocket(connectionUrl);
+                    this.socket.onopen = (event) => {
                         this.updateState();
                     };
-                    socket.onclose = (event) => {
+                    this.socket.onclose = (event) => {
                         this.updateState();
-                        console.info("Code: " + htmlEscape(event.code) + '. Reason: ' + htmlEscape(event.reason));
+                        console.info("Code: " + this.htmlEscape(event.code) + '. Reason: ' + this.htmlEscape(event.reason));
                     };
-                    socket.onerror = this.updateState;
-                    socket.onmessage = (event) => {
-                        this.list.push(JSON.stringify(event.data));
+                    this.socket.onerror = this.updateState;
+                    this.socket.onmessage = (event) => {
+                        this.list = JSON.stringify(event.data);
                     };
                 },
                 updateState: function () {
@@ -138,7 +138,7 @@
                                 console.info("Open");
                                 break;
                             default:
-                                console.info("Unknown WebSocket State: " + htmlEscape(socket.readyState));
+                                console.info("Unknown WebSocket State: " + this.htmlEscape(socket.readyState));
                                 break;
                         }
                     }
@@ -149,6 +149,14 @@
                     } else {
                         this.socket.send(0);
                     }
+                },
+                htmlEscape: function (str) {
+                    return (str + '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
                 }
             },
             created: function () {
