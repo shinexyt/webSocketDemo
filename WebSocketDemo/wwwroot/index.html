@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>websocket demo</title>
+    <!-- Bootstrap -->
+    <link href="bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="css/custom.css" rel="stylesheet">
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+
+<body>
+    <!-- 首页 -->
+    <main id="app">
+        <section style="text-align:center">
+            <button v-show="!currentUser.userName" type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
+                输入昵称开始聊天
+            </button>
+            <h2 v-show="currentUser.userName">欢迎，{{currentUser.userName}}</h2><button @click="sendSocket()">发送</button>
+        </section>
+        <section>
+            <h2 class="text-left">用户列表</h2>
+            <div class="list-group">
+                <button class="list-group-item" v-for="item in list" :key="item.userId" @click="lunchConversation(item.userId)">{{item.userName}}</button>
+            </div>
+        </section>
+        <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">输入昵称</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" class="form-control" v-model="currentUser.userName" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                        <button type="button" class="btn btn-primary" @click="saveUserName">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="js/jquery-3.2.0.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <script src="js/vue.js"></script>
+    <script src="js/global.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                list: [],
+                currentUser: { userId: 0, userName: '' },
+                isLoading: false,
+                socket: null
+            },
+            methods: {
+                saveUserName: function () {
+                    $.ajax({
+                        url: "/api/users",
+                        type: 'POST',
+                        data: 'userName=' + this.currentUser.userName,
+                        complete: (xhr, ts) => {
+                            if (ts === 'success') {
+                                this.currentUser.userId = xhr.responseText;
+                                sessionStorage.currentUser = JSON.stringify(this.currentUser);
+                                this.openSocket();
+                                //this.sendSocket();
+                                $('#myModal').modal('hide');
+                            } else {
+                                alert('访问接口失败');
+                            }
+                        }
+                    });
+                },
+                lunchConversation: function (toUserId) {
+                    $.ajax({
+                        url: "/api/users",
+                        type: 'POST',
+                        data: 'userName=' + this.currentUser.userName,
+                        complete: (xhr, ts) => {
+                            if (ts === 'success') {
+                                this.currentUser.userId = xhr.responseText;
+                                sessionStorage.currentUser = JSON.stringify(this.currentUser);
+                                $('#myModal').modal('hide');
+                            } else {
+                                alert('访问接口失败');
+                            }
+                        }
+                    });
+                },
+                openSocket: function () {
+                    console.info("Connecting");
+                    var scheme = document.location.protocol == "https:" ? "wss" : "ws";
+                    var port = document.location.port ? (":" + document.location.port) : "";
+                    var connectionUrl = scheme + "://" + document.location.hostname + port + "/api/users/others1/" + this.currentUser.userId;
+                    socket = new WebSocket(connectionUrl);
+                    socket.onopen = (event) => {
+                        this.updateState();
+                    };
+                    socket.onclose = (event) => {
+                        this.updateState();
+                        console.info("Code: " + htmlEscape(event.code) + '. Reason: ' + htmlEscape(event.reason));
+                    };
+                    socket.onerror = this.updateState;
+                    socket.onmessage = (event) => {
+                        this.list.push(JSON.stringify(event.data));
+                    };
+                },
+                updateState: function () {
+                    if (this.socket) {
+                        switch (this.socket.readyState) {
+                            case WebSocket.CLOSED:
+                                console.info("Closed");
+                                break;
+                            case WebSocket.CLOSING:
+                                console.info("Closing...");
+                                break;
+                            case WebSocket.CONNECTING:
+                                console.info("Connecting...");
+                                break;
+                            case WebSocket.OPEN:
+                                console.info("Open");
+                                break;
+                            default:
+                                console.info("Unknown WebSocket State: " + htmlEscape(socket.readyState));
+                                break;
+                        }
+                    }
+                },
+                sendSocket: function () {
+                    if (!this.socket || this.socket.readyState != WebSocket.OPEN) {
+                        console.info("socket not connected");
+                    } else {
+                        this.socket.send(0);
+                    }
+                }
+            },
+            created: function () {
+                //var api = "/api/users";
+                if (sessionStorage.currentUser) {
+                    this.currentUser = JSON.parse(sessionStorage.currentUser);
+                    this.openSocket();
+                    //this.sendSocket();
+                    //var api = "/api/users/others/" + this.currentUser.userId;
+
+                    //$.ajax({
+                    //    url: api,
+                    //    type: 'GET',
+                    //    complete: (xhr, ts) => {
+                    //        if (ts === 'success') {
+                    //            this.list = xhr.responseJSON;
+                    //        } else {
+                    //            alert('访问接口失败');
+                    //        }
+                    //    }
+                    //});
+                }
+            }
+        }
+        );
+    </script>
+</body>
+
+</html>
